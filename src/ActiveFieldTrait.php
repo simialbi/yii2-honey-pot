@@ -178,7 +178,13 @@ JS;
 
         if ($this->isHoneyPot()) {
             $inputId = $this->htmlClass::getInputId($this->model, $this->antiSpamAttribute);
-            $class = array_merge($this->options['class'] ?? [], [
+
+            $classOptions = $this->options['class'] ?? [];
+            if (is_string($classOptions)) {
+                $classOptions = explode(' ', $classOptions);
+            }
+
+            $class = array_merge($classOptions, [
                 "field-$inputId",
                 $this->form->requiredCssClass
             ]);
