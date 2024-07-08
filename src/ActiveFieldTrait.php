@@ -103,6 +103,13 @@ trait ActiveFieldTrait
         $method = 'active' . ucfirst($method);
 
         if ($this->isHoneyPot()) {
+
+            // Move the value of the attribute to the AntiSpam attribute
+            if ($value = $this->model->{$this->attribute}) {
+                $this->model->{$this->antiSpamAttribute} = $value;
+                $this->model->{$this->attribute} = '';
+            }
+
             if (empty($type)) {
                 $parts = $this->htmlClass::$method($this->model, $this->antiSpamAttribute, $this->inputOptions);
             } else {
