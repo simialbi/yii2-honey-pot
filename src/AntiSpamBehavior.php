@@ -24,7 +24,7 @@ class AntiSpamBehavior extends Behavior
      * attribute that uses the default hash attribute name, or a name=>value pair where `name` is the attribute name and
      * `value` is the corresponding hash attribute name
      */
-    public string|array $hashAttributes;
+    public string|array $hashAttributes = [];
 
     /**
      * @var array Value(s) of the {HashInput} widget fields as name=>value pairs where `name` is the hash attribute name
@@ -39,7 +39,7 @@ class AntiSpamBehavior extends Behavior
      * attribute that uses the default honeypot attribute name, or a name=>value pair where `name` is the attribute name
      * and `value` is the corresponding honeypot attribute name
      */
-    public string|array $honeyPotAttributes;
+    public string|array $honeyPotAttributes = [];
 
     /**
      * @var array Value(s) of the {HoneyPotInput} widget fields as name=>value pairs where `name` is the honeyPot
