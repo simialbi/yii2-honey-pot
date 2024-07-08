@@ -64,27 +64,53 @@ trait ActiveFieldTrait
     }
 
     /**
+     * Handles the rendering of the email input field
+     * @throws Exception
+     */
+    protected function emailInput($options = []): yiiActiveField|b3ActiveField|b4ActiveField|b5ActiveField
+    {
+        return $this->renderFields($options, 'input', 'email');
+    }
+
+    /**
+     * Handles the rendering of the number input field
+     * @throws Exception
+     */
+    protected function numberInput($options = []): yiiActiveField|b3ActiveField|b4ActiveField|b5ActiveField
+    {
+        return $this->renderFields($options, 'input', 'number');
+    }
+
+    /**
      * Render the input fields for the attribute and the AntiSpam attribute
      * @param array $options
      * @param string $method the method name for the visible field
+     * @param string $type the input type, if parent class has no matching method
      * @return yiiActiveField|b3ActiveField|b4ActiveField|b5ActiveField
      * @throws Exception
      */
     protected function renderFields(
         array $options,
-        string $method
+        string $method,
+        string $type = ''
     ): yiiActiveField|b3ActiveField|b4ActiveField|b5ActiveField {
-        $method = explode('::', $method)[1];
-        $field = parent::$method($options);
-
-        if ($this->isHash() || $this->isHoneyPot()) {
-            $method = 'active' . ucfirst($method);
+        if (empty($type)) {
+            $method = explode('::', $method)[1];
+            $field = parent::$method($options);
+        } else {
+            $field = parent::$method($type, $options);
         }
+        $method = 'active' . ucfirst($method);
 
         if ($this->isHoneyPot()) {
-            $field->parts['{input}'] =
-                Html::$method($this->model, $this->antiSpamAttribute, $this->inputOptions) .
-                Html::activeTextInput($this->model, $this->attribute, [
+            if (empty($type)) {
+                $parts = $this->htmlClass::$method($this->model, $this->antiSpamAttribute, $this->inputOptions);
+            } else {
+                $parts = $this->htmlClass::$method($type, $this->model, $this->antiSpamAttribute, $this->inputOptions);
+            }
+
+            $field->parts['{input}'] = $parts .
+                $this->htmlClass::activeTextInput($this->model, $this->attribute, [
                     'tabindex' => -1,
                     'autocomplete' => 'nope',
                 ]);
@@ -106,8 +132,12 @@ trait ActiveFieldTrait
         }
 
         if ($this->isHash()) {
-            $field->parts['{input}'] =
-                $this->htmlClass::$method($this->model, $this->attribute, $this->inputOptions) .
+            if (empty($type)) {
+                $parts = $this->htmlClass::$method($this->model, $this->attribute, $this->inputOptions);
+            } else {
+                $parts = $this->htmlClass::$method($type, $this->model, $this->attribute, $this->inputOptions);
+            }
+            $field->parts['{input}'] = $parts .
                 $this->htmlClass::activeHiddenInput($this->model, $this->antiSpamAttribute);
 
             $this->registerClientScript();
