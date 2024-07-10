@@ -10,6 +10,7 @@ use yii\bootstrap4\ActiveField as b4ActiveField;
 use yii\bootstrap4\Html as b4Html;
 use yii\bootstrap5\ActiveField as b5ActiveField;
 use yii\bootstrap5\Html as b5Html;
+use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\widgets\ActiveField as yiiActiveField;
 use yii\helpers\Inflector;
@@ -101,6 +102,8 @@ trait ActiveFieldTrait
             $field = parent::$method($type, $options);
         }
         $method = 'active' . ucfirst($method);
+
+        $this->inputOptions = ArrayHelper::merge($this->inputOptions, $options);
 
         if ($this->isHoneyPot()) {
 
@@ -214,7 +217,7 @@ JS;
         }
 
         if ($this->isHoneyPot()) {
-            $inputId = $this->htmlClass::getInputId($this->model, $this->antiSpamAttribute);
+            $inputId = $this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model, $this->antiSpamAttribute);
 
             $classOptions = $this->options['class'] ?? [];
             if (is_string($classOptions)) {
@@ -247,7 +250,10 @@ CSS;
             $js = <<<JS
 var {$var}_as = document.getElementById('$id').parentElement;
 {$var}_as.className = '$class';
-{$var}_as.getElementsByTagName('label').item(0).setAttribute('for', '$inputId');
+var label = {$var}_as.getElementsByTagName('label').item(0);
+if (label) {
+    label.setAttribute('for', '$inputId');
+}
 JS;
             $view->registerJs($js, View::POS_END);
         }
