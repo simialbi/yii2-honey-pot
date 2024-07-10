@@ -10,6 +10,7 @@ use yii\base\UnknownPropertyException;
 /**
  * Class Model
  *
+ * @property-read bool $hasSpam
  * @property array hashAttributes
  * @property array hashValues
  * @property array honeyPotAttributes
