@@ -125,7 +125,8 @@ class AntiSpamBehavior extends Behavior
     public function validateHash(string $attribute): void
     {
         $hashAttribute = $this->hashAttributes[$attribute];
-        if (md5($this->owner->$attribute) !== $this->owner->$hashAttribute) {
+        $value = preg_replace('#\s#', '', $this->owner->$attribute);
+        if (md5($value) !== $this->owner->$hashAttribute) {
             $this->hasSpam = true;
         }
     }

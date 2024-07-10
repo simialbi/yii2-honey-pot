@@ -209,7 +209,8 @@ trait ActiveFieldTrait
 
             $js = <<<JS
 document.getElementById('$attributeId').onblur=function() {
-    document.getElementById('$hashAttributeId').value = hex_md5(document.getElementById('$attributeId').value);
+    let value = document.getElementById('$attributeId').value.replace(/\s/g, '');
+    document.getElementById('$hashAttributeId').value = hex_md5(value);
 };
 JS;
 
