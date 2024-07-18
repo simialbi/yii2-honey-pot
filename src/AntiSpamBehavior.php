@@ -86,27 +86,8 @@ class AntiSpamBehavior extends Behavior
     public function antiSpamValidators(\ArrayObject $validators): ArrayObject
     {
         $newValidators = new ArrayObject();
-
         foreach ($validators as $validator) {
-            foreach ($this->honeyPotAttributes as $attribute => $honeyPotAttribute) {
-                $i = array_search($attribute, $validator->attributes);
-                if ($i !== false) {
-                    // honeyPot attribute found in validator attributes
-                    // replace it with the honeyPot attribute
-                    // add a new validator for the real attribute, except if the original validator is a RequiredValidator
-
-                    $newValidator = clone $validator;
-                    $validator->attributes[$i] = $honeyPotAttribute;
-
-                    // add new validator, except if the original validator is a RequiredValidator
-                    if (!$validator instanceof RequiredValidator) {
-                        $newValidator->attributes = [$attribute];
-                        $newValidator->enableClientValidation = false;
-                        $newValidators->append($newValidator);
-                    }
-                }
-            }
-            $newValidators->append($validator);
+            $newValidators = $this->handleValidator($newValidators, $validator);
         }
 
         // add new validation rules for honeyPot and hash attributes
@@ -114,6 +95,37 @@ class AntiSpamBehavior extends Behavior
         $newValidators[] = Validator::createValidator('ValidateHash', $this, array_keys($this->hashAttributes));
         $newValidators[] = Validator::createValidator('ValidateHoneyPot', $this, array_keys($this->honeyPotAttributes));
 
+        return $newValidators;
+    }
+
+    /**
+     * Edit and create new validator, if it contains honeyPot attributes
+     * @param ArrayObject $newValidators
+     * @param Validator $validator
+     * @return ArrayObject
+     * @internal
+     */
+    public function handleValidator(ArrayObject $newValidators, Validator $validator): ArrayObject
+    {
+        foreach ($this->honeyPotAttributes as $attribute => $honeyPotAttribute) {
+            $i = array_search($attribute, $validator->attributes);
+            if ($i !== false) {
+                // honeyPot attribute found in validator attributes
+                // replace it with the honeyPot attribute
+                // add a new validator for the real attribute, except if the original validator is a RequiredValidator
+
+                $newValidator = clone $validator;
+                $validator->attributes[$i] = $honeyPotAttribute;
+
+                // add new validator, except if the original validator is a RequiredValidator
+                if (!$validator instanceof RequiredValidator) {
+                    $newValidator->attributes = [$attribute];
+                    $newValidator->enableClientValidation = false;
+                    $newValidators->append($newValidator);
+                }
+            }
+        }
+        $newValidators->append($validator);
         return $newValidators;
     }
 

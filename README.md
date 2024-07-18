@@ -33,7 +33,7 @@ composer require --prefer-dist sandritsch91/yii2-honey-pot
 or add
 
 ```json
-"sandritsch91/yii2-honey-pot": "~1.0"
+"sandritsch91/yii2-honey-pot": "^1.0"
 ```
 
 to the `require` section of your composer.json.

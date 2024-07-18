@@ -27,7 +27,9 @@
         "yiisoft/yii2-bootstrap": "*",
         "yiisoft/yii2-bootstrap4": "*",
         "yiisoft/yii2-bootstrap5": "*",
-        "raiffeisen/bootstrap": "*"
+        "kartik-v/yii2-password": "*",
+        "raiffeisen/bootstrap": "*",
+        "sandritsch91/yii2-widget-flatpickr": "*"
     },
     "autoload": {
         "psr-4": {

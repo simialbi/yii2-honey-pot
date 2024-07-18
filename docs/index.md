@@ -29,7 +29,8 @@ The AntiSpam extension provides two methods of determining whether a form has be
 **There are few things to note:**
 
 * Both Hash and Honey Pot _must_ be applied to attributes that generate text inputs; they _**can not**_ be used on other
-  types of controls, e.g. select, checkbox, radio, etc.
+  types of controls, e.g. select, checkbox, radio, etc. Although some widgets (MaskedInput, Flatpickr) are supported. If
+  you need another widget to be supported, please open an issue.
 * Hash and Honey Pot are independent of each other, i.e. you do not have to use both of them, though using both on a
   form gives the best protection
 * Hash and Honey Pot _**must not**_ be applied to the same attribute
@@ -51,10 +52,19 @@ There are a number of steps to use the extension:
 ]
 ```
 
-* Extend the form model from \sandritsch91\yii2\honeypot\Model;
+* Extend the form model from \sandritsch91\yii2\honeypot\Model or \sandritsch91\yii2\honeypot\DynamicModel;
 
 ```php
 class MyForm extends \sandritsch91\yii2\honeypot\Model
+{
+    // ...
+}
+```
+
+or
+
+```php
+class MyForm extends \sandritsch91\yii2\honeypot\DynamicModel
 {
     // ...
 }
@@ -141,3 +151,9 @@ public function beforeSave($insert)
   return !$this->hasSpam; // Don't save if the form has spam
 }
 ```
+
+### Supported Widgets
+
+- [x] \yii\widgets\MaskedInput
+- [x] \sandritsch91\yii2\flatpickr\Flatpickr
+- [x] \kartik\password\PasswordInput (Hash only)

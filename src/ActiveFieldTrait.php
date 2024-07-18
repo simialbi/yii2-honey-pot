@@ -3,6 +3,8 @@
 namespace sandritsch91\yii2\honeypot;
 
 use Exception;
+use kartik\password\PasswordInput;
+use sandritsch91\yii2\flatpickr\Flatpickr;
 use yii\base\InvalidArgumentException;
 use yii\bootstrap\ActiveField as b3ActiveField;
 use yii\bootstrap\Html as b3Html;
@@ -15,6 +17,7 @@ use yii\helpers\Html;
 use yii\widgets\ActiveField as yiiActiveField;
 use yii\helpers\Inflector;
 use yii\web\View;
+use yii\widgets\MaskedInput;
 
 /**
  * ActiveFieldTrait
@@ -62,6 +65,78 @@ trait ActiveFieldTrait
     public function passwordInput($options = []): yiiActiveField|b3ActiveField|b4ActiveField|b5ActiveField
     {
         return $this->renderFields($options, __METHOD__);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function widget($class, $config = []): static
+    {
+        $field = parent::widget($class, $config);
+
+        $classes = [
+            MaskedInput::class,
+            Flatpickr::class,
+            PasswordInput::class,
+        ];
+
+        if (!$this->isHash() && !$this->isHoneyPot()) {
+            return $field;
+        }
+
+        if (!in_array($class, $classes)) {
+            return $field;
+        }
+
+
+        $options = [];
+        $id = Html::getInputId($this->model, $this->antiSpamAttribute);
+        $method = 'input';
+        $type = 'text';
+        $js = '';
+
+        if ($class === MaskedInput::class) {
+            if ($this->isHoneyPot()) {
+                $key = 'plugin-inputmask';
+                preg_match("#($key=\")(\S*)(\")#", $field->parts['{input}'], $matches);
+                $var = $matches[2] ?? null;
+                if ($var) {
+                    $options = ArrayHelper::merge(
+                        $config['clientOptions'] ?? [],
+                        ['pluginOptions' => $var]
+                    );
+                    $js = <<<JS
+jQuery('#{$this->htmlClass::getInputId($this->model, $this->attribute)}').inputmask('remove');
+jQuery('#{$id}').inputmask($var);
+JS;
+                }
+            }
+        }
+
+        if ($class === Flatpickr::class) {
+            if ($this->isHoneyPot()) {
+                $var = Inflector::variablize($id);
+                $js = <<<JS
+var elem_{$var} = jQuery('#{$this->getInputId()}');
+var options_{$var} = elem_{$var}.get(0)._flatpickr.config;
+delete options_{$var}['disable'];
+elem_{$var}.get(0)._flatpickr.destroy();
+flatpickr('#{$id}', options_{$var});
+JS;
+            }
+        }
+
+        if ($class === PasswordInput::class) {
+            $type = 'password';
+            if ($this->isHoneyPot()) {
+                \Yii::error('PasswordInput is not supported for honey pot fields');
+            }
+        }
+
+        $this->renderFields($options, $method, $type);
+        \Yii::$app->view->registerJs($js);
+
+        return $field;
     }
 
     /**
@@ -218,7 +293,8 @@ JS;
         }
 
         if ($this->isHoneyPot()) {
-            $inputId = $this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model, $this->antiSpamAttribute);
+            $inputId = $this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model,
+                $this->antiSpamAttribute);
 
             $classOptions = $this->options['class'] ?? [];
             if (is_string($classOptions)) {
