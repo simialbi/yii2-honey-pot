@@ -47,25 +47,43 @@ There are a number of steps to use the extension:
 ```php
 'container' => [
     'definitions' => [
+        // choose one of the following
         \yii\widgets\ActiveField::class => sandritsch91\yii2\honeypot\ActiveField::class
+        \yii\bootstrap\ActiveField::class => sandritsch91\yii2\honeypot\ActiveField::class
+        \yii\bootstrap4\ActiveField::class => sandritsch91\yii2\honeypot\ActiveField::class
+        \yii\bootstrap5\ActiveField::class => sandritsch91\yii2\honeypot\ActiveField::class
     ]
 ]
 ```
 
-* Extend the form model from \sandritsch91\yii2\honeypot\Model or \sandritsch91\yii2\honeypot\DynamicModel;
+* Use the traits in your Model / DynamicModel / ActiveRecord
 
 ```php
-class MyForm extends \sandritsch91\yii2\honeypot\Model
+use sandritsch91\yii2\honeypot\ModelTrait;
+
+class MyForm extends \yii\base\Model
 {
+    use ModelTrait;
     // ...
 }
 ```
 
-or
+```php
+use sandritsch91\yii2\honeypot\DynamicModelTrait;
+
+class MyDynamicModel extends \yii\base\DynamicModel
+{
+    use DynamicModelTrait;
+    // ...
+}
+```
 
 ```php
-class MyForm extends \sandritsch91\yii2\honeypot\DynamicModel
+use sandritsch91\yii2\honeypot\ModelTrait;
+
+class MyForm extends \yii\base\ActiveRecord
 {
+    use ModelTrait;
     // ...
 }
 ```
@@ -81,8 +99,7 @@ public function behaviors()
       'class' => \sandritsch91\yii2\honeypot\AntiSpamBehavior::class,
       'hashAttributes' => ['hashAttribute1', 'hashAttribute', ... 'hashAttributeN'],
       'honeyPotAttributes' => ['honeyPotAttribute1', 'honeyPotAttribute', ... 'honeyPotAttributeN']
-    ],
-    // other behaviors
+    ]
   ];
 }
 ```
@@ -96,16 +113,17 @@ public function behaviors()
 Anti-spam attributes will be automatically named if the name is not defined; the name will be the reverse string of the
 MD5 hash of the attribute name.
 
-##### A minimal example:
+##### A minimal example for a simple form:
 
-```php
-namespace frontend\models;
-   
+```php   
 use yii\base\Model;
 use sandritsch91\yii2\honeypot\AntiSpamBehavior;
+use sandritsch91\yii2\honeypot\ModelTrait;
 
 class SimpleForm extends Model
 { 
+  use ModelTrait;
+
   public $name;
   public $email;
    
@@ -115,6 +133,54 @@ class SimpleForm extends Model
       [
         'class' => AntiSpamBehavior::class,
         'hashAttributes' => 'name',
+        'honeyPotAttributes' => 'email'
+      ]
+    ];
+  }
+}
+```
+
+##### A minimal example for a DynamicModel:
+
+```php
+use sandritsch91\yii2\honeypot\AntiSpamBehavior;
+use sandritsch91\yii2\honeypot\DynamicModelTrait;
+use yii\base\DynamicModel;
+
+class DynamicModel extends DynamicModel
+{
+  use DynamicModelTrait;
+
+  public function behaviors()
+  {
+    return [
+      [
+        'class' => AntiSpamBehavior::class,
+        'hashAttributes' => 'username',
+        'honeyPotAttributes' => 'email'
+      ]
+    ];
+  }
+}
+```
+
+##### A minimal example for an ActiveRecord model:
+
+```php
+use sandritsch91\yii2\honeypot\AntiSpamBehavior;
+use sandritsch91\yii2\honeypot\ModelTrait;
+use yii\db\ActiveRecord;
+
+class User extends ActiveRecord
+{
+  use ModelTrait;
+
+  public function behaviors()
+  {
+    return [
+      [
+        'class' => AntiSpamBehavior::class,
+        'hashAttributes' => 'username',
         'honeyPotAttributes' => 'email'
       ]
     ];

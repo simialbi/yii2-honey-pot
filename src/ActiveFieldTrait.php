@@ -237,20 +237,9 @@ JS;
      */
     protected function getAntiSpamAttribute()
     {
-        return $this->model->honeyPotAttributes[$this->attribute] ?? $this->model->hashAttributes[$this->attribute];
-    }
-
-    /**
-     * @throws Exception
-     */
-    protected function findAsBehavior(): ?AntiSpamBehavior
-    {
-        foreach ($this->model->getBehaviors() as $behavior) {
-            if ($behavior instanceof AntiSpamBehavior) {
-                return $behavior;
-            }
-        }
-        return null;
+        /** @var AntiSpamBehavior|ModelTrait $model */
+        $model = $this->model;
+        return $model->honeyPotAttributes[$this->attribute] ?? $model->hashAttributes[$this->attribute];
     }
 
     /**
@@ -259,7 +248,9 @@ JS;
      */
     protected function isHoneyPot(): bool
     {
-        return in_array($this->attribute, array_keys($this->findAsBehavior()?->honeyPotAttributes ?? []));
+        /** @var AntiSpamBehavior|ModelTrait $model */
+        $model = $this->model;
+        return in_array($this->attribute, array_keys($model->findAsBehavior()?->honeyPotAttributes ?? []));
     }
 
     /**
@@ -268,7 +259,9 @@ JS;
      */
     protected function isHash(): bool
     {
-        return in_array($this->attribute, array_keys($this->findAsBehavior()?->hashAttributes ?? []));
+        /** @var AntiSpamBehavior|ModelTrait $model */
+        $model = $this->model;
+        return in_array($this->attribute, array_keys($model->findAsBehavior()?->hashAttributes ?? []));
     }
 
     /**

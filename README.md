@@ -14,11 +14,11 @@ BeastBytes' extension relies on modifications to the view files to work. If a lo
 this can be a lot of work. This extension aims to provide the same functionality without the need to modify the view
 files.
 
-To achieve this, this extension uses a custom ActiveField and a custom Model class that extends the default
-ActiveField / Model class. The custom ActiveField class adds the necessary hidden fields to the form and the custom
-Model class handles the attributes / validation
+To achieve this, this extension uses a custom ActiveField and multiple Traits which extend the default
+ActiveField / ActiveRecord / Model / DynamicModal classes. The custom ActiveField class adds the necessary hidden fields
+to the form and the Traits handle the attributes / validation
 
-If extending the default ActiveField / Model class is not an option, BeastBytes' original extension should be used.
+If extending the default ActiveField class is not an option, BeastBytes' original extension should be used.
 
 ## Installation
 
