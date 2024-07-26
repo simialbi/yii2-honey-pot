@@ -250,6 +250,9 @@ JS;
     {
         /** @var AntiSpamBehavior|ModelTrait $model */
         $model = $this->model;
+        if (!method_exists($model, 'findAsBehavior')) {
+            return false;
+        }
         return in_array($this->attribute, array_keys($model->findAsBehavior()?->honeyPotAttributes ?? []));
     }
 
@@ -261,6 +264,9 @@ JS;
     {
         /** @var AntiSpamBehavior|ModelTrait $model */
         $model = $this->model;
+        if (!method_exists($model, 'findAsBehavior')) {
+            return false;
+        }
         return in_array($this->attribute, array_keys($model->findAsBehavior()?->hashAttributes ?? []));
     }
 
