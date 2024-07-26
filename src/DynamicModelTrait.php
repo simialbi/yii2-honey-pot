@@ -15,7 +15,10 @@ trait DynamicModelTrait
 {
     use ModelTrait;
 
-    public function addRule(array|string $attributes, string|Validator|callable $validator, array $options = []): static
+    /**
+     * {@inheritDoc}
+     */
+    public function addRule($attributes, $validator, $options = []): static
     {
         /** @var $this DynamicModel */
         $validators = $this->getValidators();
@@ -27,7 +30,16 @@ trait DynamicModelTrait
         }
 
         $this->handleValidator($validators, $validator);
-        $this->defineAttributesByValidator($validator);
+
+        /**
+         * @see DynamicModel::defineAttributesByValidator()
+         */
+        // $this->defineAttributesByValidator($validator);
+        foreach ($validator->getAttributeNames() as $attribute) {
+            if (!$this->hasAttribute($attribute)) {
+                $this->defineAttribute($attribute);
+            }
+        }
 
         return $this;
     }
