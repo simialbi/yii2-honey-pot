@@ -294,17 +294,12 @@ JS;
         if ($this->isHoneyPot()) {
             $inputId = $this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model,
                 $this->antiSpamAttribute);
+            $origInputId = $this->$this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model,
+                $this->attribute);
 
-            $classOptions = $this->options['class'] ?? [];
-            if (is_string($classOptions)) {
-                $classOptions = explode(' ', $classOptions);
-            }
-
-            $class = array_merge($classOptions, [
-                "field-$inputId",
-                $this->form->requiredCssClass
-            ]);
-            $class = join(' ', $class);
+            $requiredClass = $this->model->isAttributeRequired(
+                Html::getAttributeName($this->antiSpamAttribute)
+            ) ? $this->form->requiredCssClass : '';
 
             $view = $this->form->getView();
             $id = $this->htmlClass::getInputId($this->model, $this->attribute);
@@ -324,9 +319,9 @@ CSS;
             $view->registerCss($css);
 
             $js = <<<JS
-var {$var}_as = document.getElementById('$id').parentElement;
-{$var}_as.className = '$class';
-var label = {$var}_as.getElementsByTagName('label').item(0);
+var {$var}_as = jQuery('#$id').closest('.field-$origInputId');
+{$var}_as.addClass('field-$inputId').addClass('$requiredClass').removeClass('field-$origInputId');
+var label = {$var}_as.find('label').get(0);
 if (label) {
     label.setAttribute('for', '$inputId');
 }
