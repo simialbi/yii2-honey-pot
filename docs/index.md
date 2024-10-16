@@ -56,6 +56,14 @@ There are a number of steps to use the extension:
 ]
 ```
 
+or set the `activeFieldClass` property in your form:
+
+```php
+ActiveForm::begin([
+    'activeFieldClass' => \sandritsch91\yii2\honeypot\ActiveField::class
+]);
+```
+
 * Use the traits in your Model / DynamicModel / ActiveRecord
 
 ```php
