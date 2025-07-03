@@ -90,7 +90,7 @@ trait ActiveFieldTrait
 
 
         $options = [];
-        $id = Html::getInputId($this->model, $this->antiSpamAttribute);
+        $id = $this->htmlClass::getInputId($this->model, $this->antiSpamAttribute);
         $method = 'input';
         $type = 'text';
         $js = '';
@@ -297,9 +297,8 @@ JS;
             $origInputId = $this->$this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model,
                 $this->attribute);
 
-            $requiredClass = $this->model->isAttributeRequired(
-                Html::getAttributeName($this->antiSpamAttribute)
-            ) ? $this->form->requiredCssClass : '';
+            $requiredClass = $this->model->isAttributeRequired($this->htmlClass::getAttributeName($this->antiSpamAttribute)) ?
+                $this->form->requiredCssClass : '';
 
             $view = $this->form->getView();
             $id = $this->htmlClass::getInputId($this->model, $this->attribute);
