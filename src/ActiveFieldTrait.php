@@ -196,6 +196,7 @@ JS;
 
             $field->parts['{input}'] = $parts .
                 $this->htmlClass::activeTextInput($this->model, $this->attribute, [
+                    'id' => $this->getAntiSpamInputId($this->attribute),
                     'tabindex' => -1,
                     'autocomplete' => 'nope',
                 ]);
@@ -223,7 +224,9 @@ JS;
                 $parts = $this->htmlClass::$method($type, $this->model, $this->attribute, $this->inputOptions);
             }
             $field->parts['{input}'] = $parts .
-                $this->htmlClass::activeHiddenInput($this->model, $this->antiSpamAttribute);
+                $this->htmlClass::activeHiddenInput($this->model, $this->antiSpamAttribute, [
+                    'id' => $this->getAntiSpamInputId($this->antiSpamAttribute)
+                ]);
 
             $this->registerClientScript();
         }
@@ -278,8 +281,8 @@ JS;
         if ($this->isHash()) {
             HashAsset::register($this->form->getView());
 
-            $attributeId = $this->htmlClass::getInputId($this->model, $this->attribute);
-            $hashAttributeId = $this->htmlClass::getInputId($this->model, $this->antiSpamAttribute);
+            $attributeId = $this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model, $this->attribute);
+            $hashAttributeId = $this->getAntiSpamInputId($this->antiSpamAttribute);
 
             $js = <<<JS
 document.getElementById('$attributeId').onblur=function() {
@@ -294,18 +297,15 @@ JS;
         if ($this->isHoneyPot()) {
             $inputId = $this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model,
                 $this->antiSpamAttribute);
-            $origInputId = $this->$this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model,
-                $this->attribute);
+            $origInputId = $this->getAntiSpamInputId($this->attribute);
 
             $requiredClass = $this->model->isAttributeRequired($this->htmlClass::getAttributeName($this->antiSpamAttribute)) ?
                 $this->form->requiredCssClass : '';
 
             $view = $this->form->getView();
-            $id = $this->htmlClass::getInputId($this->model, $this->attribute);
-            $var = Inflector::variablize($id);
 
             $css = <<< CSS
-#$id {
+#$origInputId {
     border: none;
     bottom: 0;
     height: 0;
@@ -317,8 +317,9 @@ JS;
 CSS;
             $view->registerCss($css);
 
+            $var = Inflector::variablize($origInputId);
             $js = <<<JS
-var {$var}_as = jQuery('#$id').closest('.field-$origInputId');
+var {$var}_as = jQuery('#$origInputId').closest('.field-$origInputId');
 {$var}_as.addClass('field-$inputId').addClass('$requiredClass').removeClass('field-$origInputId');
 var label = {$var}_as.find('label').get(0);
 if (label) {
@@ -327,5 +328,19 @@ if (label) {
 JS;
             $view->registerJs($js, View::POS_END);
         }
+    }
+
+    /**
+     * Returns the ID for the AntiSpam input field
+     * @param string $attribute
+     * @return string
+     */
+    protected function getAntiSpamInputId(string $attribute): string
+    {
+        $id = $this->htmlClass::getInputId($this->model, $attribute);
+        if ($this->inputOptions['id'] ?? false) {
+            $id .= '-' . $this->inputOptions['id'];
+        }
+        return $id;
     }
 }
