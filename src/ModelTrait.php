@@ -4,20 +4,20 @@ namespace sandritsch91\yii2\honeypot;
 
 use ArrayObject;
 use Exception;
+use yii\base\DynamicModel;
 use yii\base\InvalidCallException;
+use yii\base\Model;
 use yii\base\UnknownPropertyException;
+use yii\db\ActiveRecord;
 
 /**
- * Class Model
- *
- * @property array hashAttributes
- * @property array hashValues
- * @property array honeyPotAttributes
- * @property array honeyPotValues
- * @method ArrayObject antiSpamValidators(ArrayObject $validators)
+ * Trait ModelTrait
  */
-class Model extends \yii\base\Model
+trait ModelTrait
 {
+    abstract public function attributeLabels();
+    abstract public function generateAttributeLabel($name);
+
     /**
      * Returns the value of a HashInput attribute, HoneyPotInput attribute, or an object property
      * @param string $name the name
@@ -56,12 +56,14 @@ class Model extends \yii\base\Model
         if (isset($behavior)) {
             if (in_array($name, array_keys($behavior->hashValues))) {
                 $behavior->hashValues[$name] = $value;
+                return;
             } elseif (in_array($name, array_keys($behavior->honeyPotValues))) {
                 $behavior->honeyPotValues[$name] = $value;
+                return;
             }
-        } else {
-            parent::__set($name, $value);
         }
+
+        parent::__set($name, $value);
     }
 
     /**
@@ -69,6 +71,7 @@ class Model extends \yii\base\Model
      */
     public function getAttributeLabel($attribute): string
     {
+        /** @var Model|DynamicModel|ActiveRecord|AntiSpamBehavior $this */
         $labels = $this->attributeLabels();
 
         if ($labels[$attribute] ?? false) {
@@ -79,8 +82,8 @@ class Model extends \yii\base\Model
             $realAttribute = array_search($attribute, $this->honeyPotAttributes);
             return $labels[$realAttribute] ?? $this->generateAttributeLabel($realAttribute);
         } else {
-            // Otherwise, return the default label
-            return $this->generateAttributeLabel($attribute);
+            // call parent function
+            return parent::getAttributeLabel($attribute);
         }
     }
 
@@ -90,6 +93,7 @@ class Model extends \yii\base\Model
      */
     public function createValidators(): ArrayObject
     {
+        /** @var Model|DynamicModel|ActiveRecord|AntiSpamBehavior $this */
         $validators = parent::createValidators();
         if (empty($this->findAsBehavior())) {
             return $validators;
@@ -100,8 +104,9 @@ class Model extends \yii\base\Model
     /**
      * @throws Exception
      */
-    protected function findAsBehavior(): ?AntiSpamBehavior
+    public function findAsBehavior(): ?AntiSpamBehavior
     {
+        /** @var Model|DynamicModel|ActiveRecord|AntiSpamBehavior  $this */
         foreach ($this->getBehaviors() as $behavior) {
             if ($behavior instanceof AntiSpamBehavior) {
                 return $behavior;

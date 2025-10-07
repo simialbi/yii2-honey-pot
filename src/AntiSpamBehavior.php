@@ -24,7 +24,7 @@ class AntiSpamBehavior extends Behavior
      * attribute that uses the default hash attribute name, or a name=>value pair where `name` is the attribute name and
      * `value` is the corresponding hash attribute name
      */
-    public string|array $hashAttributes;
+    public string|array $hashAttributes = [];
 
     /**
      * @var array Value(s) of the {HashInput} widget fields as name=>value pairs where `name` is the hash attribute name
@@ -39,7 +39,7 @@ class AntiSpamBehavior extends Behavior
      * attribute that uses the default honeypot attribute name, or a name=>value pair where `name` is the attribute name
      * and `value` is the corresponding honeypot attribute name
      */
-    public string|array $honeyPotAttributes;
+    public string|array $honeyPotAttributes = [];
 
     /**
      * @var array Value(s) of the {HoneyPotInput} widget fields as name=>value pairs where `name` is the honeyPot
@@ -86,27 +86,8 @@ class AntiSpamBehavior extends Behavior
     public function antiSpamValidators(\ArrayObject $validators): ArrayObject
     {
         $newValidators = new ArrayObject();
-
         foreach ($validators as $validator) {
-            foreach ($this->honeyPotAttributes as $attribute => $honeyPotAttribute) {
-                $i = array_search($attribute, $validator->attributes);
-                if ($i !== false) {
-                    // honeyPot attribute found in validator attributes
-                    // replace it with the honeyPot attribute
-                    // add a new validator for the real attribute, except if the original validator is a RequiredValidator
-
-                    $newValidator = clone $validator;
-                    $validator->attributes[$i] = $honeyPotAttribute;
-
-                    // add new validator, except if the original validator is a RequiredValidator
-                    if (!$validator instanceof RequiredValidator) {
-                        $newValidator->attributes = [$attribute];
-                        $newValidator->enableClientValidation = false;
-                        $newValidators->append($newValidator);
-                    }
-                }
-            }
-            $newValidators->append($validator);
+            $newValidators = $this->handleValidator($newValidators, $validator);
         }
 
         // add new validation rules for honeyPot and hash attributes
@@ -118,6 +99,37 @@ class AntiSpamBehavior extends Behavior
     }
 
     /**
+     * Edit and create new validator, if it contains honeyPot attributes
+     * @param ArrayObject $newValidators
+     * @param Validator $validator
+     * @return ArrayObject
+     * @internal
+     */
+    public function handleValidator(ArrayObject $newValidators, Validator $validator): ArrayObject
+    {
+        foreach ($this->honeyPotAttributes as $attribute => $honeyPotAttribute) {
+            $i = array_search($attribute, $validator->attributes);
+            if ($i !== false) {
+                // honeyPot attribute found in validator attributes
+                // replace it with the honeyPot attribute
+                // add a new validator for the real attribute, except if the original validator is a RequiredValidator
+
+                $newValidator = clone $validator;
+                $validator->attributes[$i] = $honeyPotAttribute;
+
+                // add new validator, except if the original validator is a RequiredValidator
+                if (!$validator instanceof RequiredValidator) {
+                    $newValidator->attributes = [$attribute];
+                    $newValidator->enableClientValidation = false;
+                    $newValidators->append($newValidator);
+                }
+            }
+        }
+        $newValidators->append($validator);
+        return $newValidators;
+    }
+
+    /**
      * Validates a Hash {AntiSpamInput} widget attribute and sets the hasSpam property if the attribute is invalid
      * @param string $attribute the name of the attribute to be validated
      * @see hasSpam
@@ -125,7 +137,8 @@ class AntiSpamBehavior extends Behavior
     public function validateHash(string $attribute): void
     {
         $hashAttribute = $this->hashAttributes[$attribute];
-        if (md5($this->owner->$attribute) !== $this->owner->$hashAttribute) {
+        $value = preg_replace('#\s#', '', $this->owner->$attribute);
+        if (md5($value) !== $this->owner->$hashAttribute) {
             $this->hasSpam = true;
         }
     }

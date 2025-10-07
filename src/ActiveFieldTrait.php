@@ -3,6 +3,8 @@
 namespace sandritsch91\yii2\honeypot;
 
 use Exception;
+use kartik\password\PasswordInput;
+use sandritsch91\yii2\flatpickr\Flatpickr;
 use yii\base\InvalidArgumentException;
 use yii\bootstrap\ActiveField as b3ActiveField;
 use yii\bootstrap\Html as b3Html;
@@ -10,10 +12,12 @@ use yii\bootstrap4\ActiveField as b4ActiveField;
 use yii\bootstrap4\Html as b4Html;
 use yii\bootstrap5\ActiveField as b5ActiveField;
 use yii\bootstrap5\Html as b5Html;
+use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\widgets\ActiveField as yiiActiveField;
 use yii\helpers\Inflector;
 use yii\web\View;
+use yii\widgets\MaskedInput;
 
 /**
  * ActiveFieldTrait
@@ -64,27 +68,135 @@ trait ActiveFieldTrait
     }
 
     /**
+     * {@inheritDoc}
+     */
+    public function widget($class, $config = []): static
+    {
+        $field = parent::widget($class, $config);
+
+        $classes = [
+            MaskedInput::class,
+            Flatpickr::class,
+            PasswordInput::class,
+        ];
+
+        if (!$this->isHash() && !$this->isHoneyPot()) {
+            return $field;
+        }
+
+        if (!in_array($class, $classes)) {
+            return $field;
+        }
+
+
+        $options = [];
+        $id = $this->htmlClass::getInputId($this->model, $this->antiSpamAttribute);
+        $method = 'input';
+        $type = 'text';
+        $js = '';
+
+        if ($class === MaskedInput::class) {
+            if ($this->isHoneyPot()) {
+                $key = 'plugin-inputmask';
+                preg_match("#($key=\")(\S*)(\")#", $field->parts['{input}'], $matches);
+                $var = $matches[2] ?? null;
+                if ($var) {
+                    $options = ArrayHelper::merge(
+                        $config['clientOptions'] ?? [],
+                        ['pluginOptions' => $var]
+                    );
+                    $js = <<<JS
+jQuery('#{$this->htmlClass::getInputId($this->model, $this->attribute)}').inputmask('remove');
+jQuery('#{$id}').inputmask($var);
+JS;
+                }
+            }
+        }
+
+        if ($class === Flatpickr::class) {
+            if ($this->isHoneyPot()) {
+                $var = Inflector::variablize($id);
+                $js = <<<JS
+var elem_{$var} = jQuery('#{$this->getInputId()}');
+var options_{$var} = elem_{$var}.get(0)._flatpickr.config;
+delete options_{$var}['disable'];
+elem_{$var}.get(0)._flatpickr.destroy();
+flatpickr('#{$id}', options_{$var});
+JS;
+            }
+        }
+
+        if ($class === PasswordInput::class) {
+            $type = 'password';
+            if ($this->isHoneyPot()) {
+                \Yii::error('PasswordInput is not supported for honey pot fields');
+            }
+        }
+
+        $this->renderFields($options, $method, $type);
+        \Yii::$app->view->registerJs($js);
+
+        return $field;
+    }
+
+    /**
+     * Handles the rendering of the email input field
+     * @throws Exception
+     */
+    protected function emailInput($options = []): yiiActiveField|b3ActiveField|b4ActiveField|b5ActiveField
+    {
+        return $this->renderFields($options, 'input', 'email');
+    }
+
+    /**
+     * Handles the rendering of the number input field
+     * @throws Exception
+     */
+    protected function numberInput($options = []): yiiActiveField|b3ActiveField|b4ActiveField|b5ActiveField
+    {
+        return $this->renderFields($options, 'input', 'number');
+    }
+
+    /**
      * Render the input fields for the attribute and the AntiSpam attribute
      * @param array $options
      * @param string $method the method name for the visible field
+     * @param string $type the input type, if parent class has no matching method
      * @return yiiActiveField|b3ActiveField|b4ActiveField|b5ActiveField
      * @throws Exception
      */
     protected function renderFields(
         array $options,
-        string $method
+        string $method,
+        string $type = ''
     ): yiiActiveField|b3ActiveField|b4ActiveField|b5ActiveField {
-        $method = explode('::', $method)[1];
-        $field = parent::$method($options);
-
-        if ($this->isHash() || $this->isHoneyPot()) {
-            $method = 'active' . ucfirst($method);
+        if (empty($type)) {
+            $method = explode('::', $method)[1];
+            $field = parent::$method($options);
+        } else {
+            $field = parent::$method($type, $options);
         }
+        $method = 'active' . ucfirst($method);
+
+        $this->inputOptions = ArrayHelper::merge($this->inputOptions, $options);
 
         if ($this->isHoneyPot()) {
-            $field->parts['{input}'] =
-                Html::$method($this->model, $this->antiSpamAttribute, $this->inputOptions) .
-                Html::activeTextInput($this->model, $this->attribute, [
+
+            // Move the value of the attribute to the AntiSpam attribute
+            if ($value = $this->model->{$this->attribute}) {
+                $this->model->{$this->antiSpamAttribute} = $value;
+                $this->model->{$this->attribute} = '';
+            }
+
+            if (empty($type)) {
+                $parts = $this->htmlClass::$method($this->model, $this->antiSpamAttribute, $this->inputOptions);
+            } else {
+                $parts = $this->htmlClass::$method($type, $this->model, $this->antiSpamAttribute, $this->inputOptions);
+            }
+
+            $field->parts['{input}'] = $parts .
+                $this->htmlClass::activeTextInput($this->model, $this->attribute, [
+                    'id' => $this->getAntiSpamInputId($this->attribute),
                     'tabindex' => -1,
                     'autocomplete' => 'nope',
                 ]);
@@ -106,9 +218,15 @@ trait ActiveFieldTrait
         }
 
         if ($this->isHash()) {
-            $field->parts['{input}'] =
-                $this->htmlClass::$method($this->model, $this->attribute, $this->inputOptions) .
-                $this->htmlClass::activeHiddenInput($this->model, $this->antiSpamAttribute);
+            if (empty($type)) {
+                $parts = $this->htmlClass::$method($this->model, $this->attribute, $this->inputOptions);
+            } else {
+                $parts = $this->htmlClass::$method($type, $this->model, $this->attribute, $this->inputOptions);
+            }
+            $field->parts['{input}'] = $parts .
+                $this->htmlClass::activeHiddenInput($this->model, $this->antiSpamAttribute, [
+                    'id' => $this->getAntiSpamInputId($this->antiSpamAttribute)
+                ]);
 
             $this->registerClientScript();
         }
@@ -122,20 +240,9 @@ trait ActiveFieldTrait
      */
     protected function getAntiSpamAttribute()
     {
-        return $this->model->honeyPotAttributes[$this->attribute] ?? $this->model->hashAttributes[$this->attribute];
-    }
-
-    /**
-     * @throws Exception
-     */
-    protected function findAsBehavior(): ?AntiSpamBehavior
-    {
-        foreach ($this->model->getBehaviors() as $behavior) {
-            if ($behavior instanceof AntiSpamBehavior) {
-                return $behavior;
-            }
-        }
-        return null;
+        /** @var AntiSpamBehavior|ModelTrait $model */
+        $model = $this->model;
+        return $model->honeyPotAttributes[$this->attribute] ?? $model->hashAttributes[$this->attribute];
     }
 
     /**
@@ -144,7 +251,12 @@ trait ActiveFieldTrait
      */
     protected function isHoneyPot(): bool
     {
-        return in_array($this->attribute, array_keys($this->findAsBehavior()?->honeyPotAttributes ?? []));
+        /** @var AntiSpamBehavior|ModelTrait $model */
+        $model = $this->model;
+        if (!method_exists($model, 'findAsBehavior')) {
+            return false;
+        }
+        return in_array($this->attribute, array_keys($model->findAsBehavior()?->honeyPotAttributes ?? []));
     }
 
     /**
@@ -153,7 +265,12 @@ trait ActiveFieldTrait
      */
     protected function isHash(): bool
     {
-        return in_array($this->attribute, array_keys($this->findAsBehavior()?->hashAttributes ?? []));
+        /** @var AntiSpamBehavior|ModelTrait $model */
+        $model = $this->model;
+        if (!method_exists($model, 'findAsBehavior')) {
+            return false;
+        }
+        return in_array($this->attribute, array_keys($model->findAsBehavior()?->hashAttributes ?? []));
     }
 
     /**
@@ -164,12 +281,13 @@ trait ActiveFieldTrait
         if ($this->isHash()) {
             HashAsset::register($this->form->getView());
 
-            $attributeId = $this->htmlClass::getInputId($this->model, $this->attribute);
-            $hashAttributeId = $this->htmlClass::getInputId($this->model, $this->antiSpamAttribute);
+            $attributeId = $this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model, $this->attribute);
+            $hashAttributeId = $this->getAntiSpamInputId($this->antiSpamAttribute);
 
             $js = <<<JS
 document.getElementById('$attributeId').onblur=function() {
-    document.getElementById('$hashAttributeId').value = hex_md5(document.getElementById('$attributeId').value);
+    let value = document.getElementById('$attributeId').value.replace(/\s/g, '');
+    document.getElementById('$hashAttributeId').value = hex_md5(value);
 };
 JS;
 
@@ -177,19 +295,17 @@ JS;
         }
 
         if ($this->isHoneyPot()) {
-            $inputId = $this->htmlClass::getInputId($this->model, $this->antiSpamAttribute);
-            $class = array_merge($this->options['class'] ?? [], [
-                "field-$inputId",
-                $this->form->requiredCssClass
-            ]);
-            $class = join(' ', $class);
+            $inputId = $this->inputOptions['id'] ?? $this->htmlClass::getInputId($this->model,
+                $this->antiSpamAttribute);
+            $origInputId = $this->getAntiSpamInputId($this->attribute);
+
+            $requiredClass = $this->model->isAttributeRequired($this->htmlClass::getAttributeName($this->antiSpamAttribute)) ?
+                $this->form->requiredCssClass : '';
 
             $view = $this->form->getView();
-            $id = $this->htmlClass::getInputId($this->model, $this->attribute);
-            $var = Inflector::variablize($id);
 
             $css = <<< CSS
-#$id {
+#$origInputId {
     border: none;
     bottom: 0;
     height: 0;
@@ -201,12 +317,30 @@ JS;
 CSS;
             $view->registerCss($css);
 
+            $var = Inflector::variablize($origInputId);
             $js = <<<JS
-var {$var}_as = document.getElementById('$id').parentElement;
-{$var}_as.className = '$class';
-{$var}_as.getElementsByTagName('label').item(0).setAttribute('for', '$inputId');
+var {$var}_as = jQuery('#$origInputId').closest('.field-$origInputId');
+{$var}_as.addClass('field-$inputId').addClass('$requiredClass').removeClass('field-$origInputId');
+var label = {$var}_as.find('label').get(0);
+if (label) {
+    label.setAttribute('for', '$inputId');
+}
 JS;
             $view->registerJs($js, View::POS_END);
         }
+    }
+
+    /**
+     * Returns the ID for the AntiSpam input field
+     * @param string $attribute
+     * @return string
+     */
+    protected function getAntiSpamInputId(string $attribute): string
+    {
+        $id = $this->htmlClass::getInputId($this->model, $attribute);
+        if ($this->inputOptions['id'] ?? false) {
+            $id .= '-' . $this->inputOptions['id'];
+        }
+        return $id;
     }
 }

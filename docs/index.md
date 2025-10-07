@@ -29,7 +29,8 @@ The AntiSpam extension provides two methods of determining whether a form has be
 **There are few things to note:**
 
 * Both Hash and Honey Pot _must_ be applied to attributes that generate text inputs; they _**can not**_ be used on other
-  types of controls, e.g. select, checkbox, radio, etc.
+  types of controls, e.g. select, checkbox, radio, etc. Although some widgets (MaskedInput, Flatpickr) are supported. If
+  you need another widget to be supported, please open an issue.
 * Hash and Honey Pot are independent of each other, i.e. you do not have to use both of them, though using both on a
   form gives the best protection
 * Hash and Honey Pot _**must not**_ be applied to the same attribute
@@ -46,16 +47,51 @@ There are a number of steps to use the extension:
 ```php
 'container' => [
     'definitions' => [
+        // choose one of the following
         \yii\widgets\ActiveField::class => sandritsch91\yii2\honeypot\ActiveField::class
+        \yii\bootstrap\ActiveField::class => sandritsch91\yii2\honeypot\ActiveField::class
+        \yii\bootstrap4\ActiveField::class => sandritsch91\yii2\honeypot\ActiveField::class
+        \yii\bootstrap5\ActiveField::class => sandritsch91\yii2\honeypot\ActiveField::class
     ]
 ]
 ```
 
-* Extend the form model from \sandritsch91\yii2\honeypot\Model;
+or set the `activeFieldClass` property in your form:
 
 ```php
-class MyForm extends \sandritsch91\yii2\honeypot\Model
+ActiveForm::begin([
+    'activeFieldClass' => \sandritsch91\yii2\honeypot\ActiveField::class
+]);
+```
+
+* Use the traits in your Model / DynamicModel / ActiveRecord
+
+```php
+use sandritsch91\yii2\honeypot\ModelTrait;
+
+class MyForm extends \yii\base\Model
 {
+    use ModelTrait;
+    // ...
+}
+```
+
+```php
+use sandritsch91\yii2\honeypot\DynamicModelTrait;
+
+class MyDynamicModel extends \yii\base\DynamicModel
+{
+    use DynamicModelTrait;
+    // ...
+}
+```
+
+```php
+use sandritsch91\yii2\honeypot\ModelTrait;
+
+class MyForm extends \yii\base\ActiveRecord
+{
+    use ModelTrait;
     // ...
 }
 ```
@@ -71,8 +107,7 @@ public function behaviors()
       'class' => \sandritsch91\yii2\honeypot\AntiSpamBehavior::class,
       'hashAttributes' => ['hashAttribute1', 'hashAttribute', ... 'hashAttributeN'],
       'honeyPotAttributes' => ['honeyPotAttribute1', 'honeyPotAttribute', ... 'honeyPotAttributeN']
-    ],
-    // other behaviors
+    ]
   ];
 }
 ```
@@ -86,16 +121,17 @@ public function behaviors()
 Anti-spam attributes will be automatically named if the name is not defined; the name will be the reverse string of the
 MD5 hash of the attribute name.
 
-##### A minimal example:
+##### A minimal example for a simple form:
 
-```php
-namespace frontend\models;
-   
+```php   
 use yii\base\Model;
 use sandritsch91\yii2\honeypot\AntiSpamBehavior;
+use sandritsch91\yii2\honeypot\ModelTrait;
 
 class SimpleForm extends Model
 { 
+  use ModelTrait;
+
   public $name;
   public $email;
    
@@ -105,6 +141,54 @@ class SimpleForm extends Model
       [
         'class' => AntiSpamBehavior::class,
         'hashAttributes' => 'name',
+        'honeyPotAttributes' => 'email'
+      ]
+    ];
+  }
+}
+```
+
+##### A minimal example for a DynamicModel:
+
+```php
+use sandritsch91\yii2\honeypot\AntiSpamBehavior;
+use sandritsch91\yii2\honeypot\DynamicModelTrait;
+use yii\base\DynamicModel;
+
+class DynamicModel extends DynamicModel
+{
+  use DynamicModelTrait;
+
+  public function behaviors()
+  {
+    return [
+      [
+        'class' => AntiSpamBehavior::class,
+        'hashAttributes' => 'username',
+        'honeyPotAttributes' => 'email'
+      ]
+    ];
+  }
+}
+```
+
+##### A minimal example for an ActiveRecord model:
+
+```php
+use sandritsch91\yii2\honeypot\AntiSpamBehavior;
+use sandritsch91\yii2\honeypot\ModelTrait;
+use yii\db\ActiveRecord;
+
+class User extends ActiveRecord
+{
+  use ModelTrait;
+
+  public function behaviors()
+  {
+    return [
+      [
+        'class' => AntiSpamBehavior::class,
+        'hashAttributes' => 'username',
         'honeyPotAttributes' => 'email'
       ]
     ];
@@ -141,3 +225,9 @@ public function beforeSave($insert)
   return !$this->hasSpam; // Don't save if the form has spam
 }
 ```
+
+### Supported Widgets
+
+- [x] \yii\widgets\MaskedInput
+- [x] \sandritsch91\yii2\flatpickr\Flatpickr
+- [x] \kartik\password\PasswordInput (Hash only)
